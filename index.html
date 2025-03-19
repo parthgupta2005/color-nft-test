@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Color NFT Collection</title>
+  <style>
+    /* Global Reset & Body Style */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #000; /* Dark background */
+      color: #eee;      /* Light text */
+      font-family: 'Courier New', Courier, monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    h1, h2, p {
+      margin-bottom: 1rem;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+
+    /* Glitch effect for the main heading */
+    .glitch {
+      position: relative;
+      font-size: 2.5rem;
+      text-transform: uppercase;
+      animation: glitch 2s infinite;
+      line-height: 1.2;
+    }
+
+    @keyframes glitch {
+      0% {
+        clip: rect(42px, 9999px, 44px, 0);
+        transform: skew(0.3deg);
+      }
+      5% {
+        clip: rect(10px, 9999px, 85px, 0);
+        transform: skew(0.8deg);
+      }
+      10% {
+        clip: rect(96px, 9999px, 76px, 0);
+        transform: skew(0.2deg);
+      }
+      15% {
+        clip: rect(40px, 9999px, 10px, 0);
+        transform: skew(0.7deg);
+      }
+      20% {
+        clip: rect(20px, 9999px, 90px, 0);
+        transform: skew(0.5deg);
+      }
+      25% {
+        clip: rect(80px, 9999px, 44px, 0);
+        transform: skew(0.4deg);
+      }
+      30% {
+        clip: rect(16px, 9999px, 60px, 0);
+        transform: skew(0.8deg);
+      }
+      35% {
+        clip: rect(8px, 9999px, 80px, 0);
+        transform: skew(0.3deg);
+      }
+      40% {
+        clip: rect(84px, 9999px, 36px, 0);
+        transform: skew(0.7deg);
+      }
+      45% {
+        clip: rect(58px, 9999px, 38px, 0);
+        transform: skew(0.8deg);
+      }
+      50% {
+        clip: rect(16px, 9999px, 28px, 0);
+        transform: skew(0.4deg);
+      }
+      55% {
+        clip: rect(0px, 9999px, 80px, 0);
+        transform: skew(0.9deg);
+      }
+      60% {
+        clip: rect(44px, 9999px, 90px, 0);
+        transform: skew(0.1deg);
+      }
+      65% {
+        clip: rect(72px, 9999px, 50px, 0);
+        transform: skew(0.3deg);
+      }
+      70% {
+        clip: rect(8px, 9999px, 20px, 0);
+        transform: skew(0.6deg);
+      }
+      75% {
+        clip: rect(0px, 9999px, 80px, 0);
+        transform: skew(0.9deg);
+      }
+      80% {
+        clip: rect(40px, 9999px, 50px, 0);
+        transform: skew(0.3deg);
+      }
+      85% {
+        clip: rect(64px, 9999px, 80px, 0);
+        transform: skew(0.7deg);
+      }
+      90% {
+        clip: rect(14px, 9999px, 90px, 0);
+        transform: skew(0.5deg);
+      }
+      95% {
+        clip: rect(64px, 9999px, 100px, 0);
+        transform: skew(0.6deg);
+      }
+      100% {
+        clip: rect(42px, 9999px, 44px, 0);
+        transform: skew(0.3deg);
+      }
+    }
+
+    /* Button styling */
+    #mintButton {
+      background: #222;
+      color: #eee;
+      border: 1px solid #555;
+      padding: 0.8rem 1.2rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease, color 0.3s ease;
+      margin-bottom: 1rem;
+    }
+    #mintButton:hover {
+      background: #555;
+      color: #fff;
+    }
+
+    /* Status message styling */
+    #status {
+      margin-bottom: 2rem;
+      font-style: italic;
+      text-align: center;
+    }
+
+    /* Collection display */
+    #collection {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .nft {
+      border: 1px solid #555;
+      background: #111;
+      padding: 1rem;
+      text-align: center;
+      transition: transform 0.3s ease;
+    }
+    .nft:hover {
+      transform: scale(1.02);
+    }
+    .nft img {
+      width: 200px;
+      height: 200px;
+      object-fit: cover;
+      border: 1px solid #444;
+      margin-bottom: 0.5rem;
+    }
+    .nft p {
+      margin: 0.5rem 0;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <h1 class="glitch">Color NFT Collection</h1>
+
+  <button id="mintButton">Mint NFT</button>
+  <div id="status"></div>
+
+  <h2>Minted NFTs:</h2>
+  <div id="collection"></div>
+
+  <!-- Include ethers.js -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script>
+    // Your contract details
+    const contractAddress = "0x102D6d313accC0351aff39c90A82e2FE13B75857";
+    const contractABI = [
+      "function mint() public",
+      "function tokenCounter() public view returns (uint256)",
+      "function tokenURI(uint256 tokenId) public view returns (string)"
+    ];
+
+    // 1) Create a read-only provider using the provided RPC URL:
+    const readOnlyProvider = new ethers.providers.JsonRpcProvider(
+      "https://ethereum-sepolia-rpc.publicnode.com"
+    );
+
+    // 2) Create a read-only contract instance for loading NFTs
+    const readOnlyContract = new ethers.Contract(contractAddress, contractABI, readOnlyProvider);
+
+    // We'll store a signer-based contract here once the user connects
+    let signerContract = null;
+
+    // Load NFTs from the contract using the read-only provider
+    async function loadCollection() {
+      try {
+        const tokenCount = await readOnlyContract.tokenCounter();
+        const collectionDiv = document.getElementById("collection");
+        collectionDiv.innerHTML = "";
+
+        for (let i = 0; i < tokenCount; i++) {
+          try {
+            const tokenURI = await readOnlyContract.tokenURI(i);
+            // The tokenURI is typically data:application/json;base64,<encoded-json>
+            const base64JSON = tokenURI.split("base64,")[1];
+            const jsonMetadata = JSON.parse(atob(base64JSON));
+            const imgSrc = jsonMetadata.image;
+
+            const nftDiv = document.createElement("div");
+            nftDiv.className = "nft";
+            nftDiv.innerHTML = `
+              <img src="${imgSrc}" alt="NFT Image">
+              <p><strong>${jsonMetadata.name}</strong></p>
+              <p>${jsonMetadata.description}</p>
+            `;
+            collectionDiv.appendChild(nftDiv);
+          } catch (err) {
+            console.error("Error loading token", i, err);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading NFTs:", error);
+      }
+    }
+
+    // Prompt the user to connect their wallet (MetaMask)
+    async function connectWallet() {
+      if (window.ethereum) {
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        signerContract = new ethers.Contract(contractAddress, contractABI, signer);
+      } else {
+        alert("Please install MetaMask!");
+      }
+    }
+
+    // Mint an NFT using the signer-based contract
+    async function mintNFT() {
+      try {
+        // If we haven't connected yet, do so now
+        if (!signerContract) {
+          await connectWallet();
+        }
+        document.getElementById("status").innerText = "Minting in progress...";
+        const tx = await signerContract.mint();
+        await tx.wait();
+        document.getElementById("status").innerText = "Mint successful!";
+        // Reload the NFT collection to include the new mint
+        loadCollection();
+      } catch (error) {
+        document.getElementById("status").innerText = "Minting failed!";
+        console.error(error);
+      }
+    }
+
+    // Add event listener to the "Mint NFT" button
+    document.getElementById("mintButton").addEventListener("click", mintNFT);
+
+    // On page load, load the existing NFTs using the read-only provider
+    window.addEventListener("load", loadCollection);
+  </script>
+</body>
+</html>
