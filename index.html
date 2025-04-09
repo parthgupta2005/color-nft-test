@@ -2,202 +2,182 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>BitTensor Testnet PLY + Mint Example</title>
-
-  <!-- Three.js -->
-  <script src="https://unpkg.com/three@latest/build/three.min.js"></script>
-  <!-- PLYLoader (from three/examples) -->
-  <script src="https://unpkg.com/three@latest/examples/js/loaders/PLYLoader.js"></script>
-  <!-- Ethers.js v5 -->
+  <title>Basic Colors NFT Viewer</title>
+  <!-- Ethers.js v5 from a CDN -->
   <script src="https://cdn.ethers.io/scripts/ethers-v5.min.js" type="application/javascript"></script>
-
   <style>
     body {
-      margin: 0;
-      overflow: hidden;
       font-family: sans-serif;
+      margin: 1rem;
     }
-    #scene-container {
-      width: 100vw;
-      height: 80vh;
+    #gallery {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .nft-card {
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+      text-align: center;
+    }
+    .nft-card img {
+      max-width: 200px;
+      max-height: 200px;
       display: block;
-    }
-    #controls {
-      margin: 0;
-      padding: 1rem;
-      background-color: #f4f4f4;
-    }
-    button {
-      padding: 0.5rem 1rem;
-      font-size: 1rem;
-      margin-right: 1rem;
-      cursor: pointer;
+      margin: 0 auto;
     }
   </style>
 </head>
 <body>
-  <!-- The 3D scene container -->
-  <div id="scene-container"></div>
+  <h1>Basic Colors NFT</h1>
 
-  <!-- Controls / Buttons -->
-  <div id="controls">
-    <button id="connectButton">Connect Wallet</button>
-    <button id="mintButton" disabled>Mint NFT</button>
-    <span id="status"></span>
-  </div>
+  <button id="connectBtn">Connect Wallet</button>
+  <button id="mintBtn" disabled>Mint NFT</button>
+  <button id="refreshBtn" disabled>Refresh Gallery</button>
+  <p id="status"></p>
 
-<script>
-  /*************************************************************
-   *               THREE.JS + PLY LOADING SECTION
-   *************************************************************/
+  <!-- Gallery container to show minted NFTs -->
+  <div id="gallery"></div>
 
-  // IPFS-hosted PLY file
-  // (Replace with your own IPFS Gateway URL if different)
-  const plyUrl = "https://orange-adverse-wolf-158.mypinata.cloud/ipfs/bafybeiedyzmedvrq27qwqcacyby2vsklqfx3nfnfm4kug4tauvpjimxj6a";
+  <script>
+    /*************************************************************
+     *                  CONTRACT CONFIGURATION
+     *************************************************************/
+    const CONTRACT_ADDRESS = "0x5Fdda3D8Aa057B858a1F45642C29E93beed86742";
+    // Minimal ABI with mint, totalSupply, and tokenURI
+    const ABI = [
+      "function mint() external",
+      "function totalSupply() public view returns (uint256)",
+      "function tokenURI(uint256) public view returns (string memory)"
+    ];
 
-  let container, camera, scene, renderer;
+    let provider, signer, contract;
 
-  init3D();
-  animate();
+    // DOM elements
+    const connectBtn = document.getElementById("connectBtn");
+    const mintBtn = document.getElementById("mintBtn");
+    const refreshBtn = document.getElementById("refreshBtn");
+    const statusEl = document.getElementById("status");
+    const galleryEl = document.getElementById("gallery");
 
-  function init3D() {
-    container = document.getElementById('scene-container');
+    // Wire up event listeners
+    connectBtn.onclick = connectWallet;
+    mintBtn.onclick = mintNFT;
+    refreshBtn.onclick = fetchAllNFTs;
 
-    // Create a PerspectiveCamera
-    camera = new THREE.PerspectiveCamera(
-      45,
-      container.clientWidth / container.clientHeight,
-      0.1,
-      1000
-    );
-    camera.position.set(0, 0, 2);
-
-    // Create the scene
-    scene = new THREE.Scene();
-
-    // Basic directional light
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(2, 2, 5).normalize();
-    scene.add(light);
-
-    // Renderer
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    container.appendChild(renderer.domElement);
-
-    // Load PLY
-    const loader = new THREE.PLYLoader();
-    loader.load(
-      plyUrl,
-      function (geometry) {
-        geometry.computeVertexNormals(); // for shading
-
-        const material = new THREE.MeshStandardMaterial({
-          color: 0x0055ff,
-          flatShading: false,
-        });
-
-        const mesh = new THREE.Mesh(geometry, material);
-        scene.add(mesh);
-      },
-      (xhr) => {
-        console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
-      },
-      (error) => {
-        console.error('Error loading PLY:', error);
+    /*************************************************************
+     *                     CONNECT WALLET
+     *************************************************************/
+    async function connectWallet() {
+      if (typeof window.ethereum === "undefined") {
+        statusEl.textContent = "MetaMask is not installed.";
+        return;
       }
-    );
-  }
+      try {
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+        signer = provider.getSigner();
 
-  function animate() {
-    requestAnimationFrame(animate);
-    renderer.render(scene, camera);
-  }
+        // Instantiate contract
+        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
 
-  // Handle window resize
-  window.addEventListener('resize', onWindowResize);
-  function onWindowResize() {
-    camera.aspect = container.clientWidth / container.clientHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(container.clientWidth, container.clientHeight);
-  }
+        // Enable the buttons now that we're connected
+        mintBtn.disabled = false;
+        refreshBtn.disabled = false;
+        statusEl.textContent = "Wallet connected!";
 
-  /*************************************************************
-   *                  WEB3 / ETHERS SECTION
-   *************************************************************/
-  
-  // The address of your deployed BasicColorsNFT on BitTensor testnet
-  const CONTRACT_ADDRESS = "0x5Fdda3D8Aa057B858a1F45642C29E93beed86742";
-  // Minimal ABI with the mint() function
-  const CONTRACT_ABI = [
-    "function mint() external"
-  ];
-
-  // DOM elements
-  const connectButton = document.getElementById("connectButton");
-  const mintButton = document.getElementById("mintButton");
-  const statusEl = document.getElementById("status");
-
-  let provider;
-  let signer;
-  let contract;
-
-  connectButton.addEventListener("click", connectWallet);
-  mintButton.addEventListener("click", mintNFT);
-
-  async function connectWallet() {
-    if (typeof window.ethereum === "undefined") {
-      statusEl.textContent = "MetaMask is not installed!";
-      return;
+        // Optionally auto-fetch on connect
+        fetchAllNFTs();
+      } catch (error) {
+        statusEl.textContent = "Error connecting wallet: " + error.message;
+      }
     }
 
-    try {
-      // Request account access
-      await window.ethereum.request({ method: "eth_requestAccounts" });
+    /*************************************************************
+     *                        MINT NFT
+     *************************************************************/
+    async function mintNFT() {
+      if (!contract) {
+        statusEl.textContent = "Please connect wallet first.";
+        return;
+      }
+      try {
+        statusEl.textContent = "Minting... please confirm transaction in MetaMask.";
+        const tx = await contract.mint();
+        statusEl.textContent = "Transaction submitted: " + tx.hash;
 
-      // Create an Ethers provider and signer from MetaMask
-      provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-      signer = provider.getSigner();
+        await tx.wait();
+        statusEl.textContent = "Mint successful! Token minted. Tx: " + tx.hash;
 
-      // (Optional) Check if the user is on the correct chain
-      // For BitTensor testnet, you'd confirm chainId, but some custom chains
-      // might show up as '0xNaN' or need manual addition in MetaMask
-      const network = await provider.getNetwork();
-      console.log("Connected to chainId:", network.chainId);
-
-      statusEl.textContent = "Wallet connected!";
-      mintButton.disabled = false; // enable mint button once connected
-
-      // Instantiate contract
-      contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-
-    } catch (err) {
-      console.error(err);
-      statusEl.textContent = "User denied account access or error occurred";
-    }
-  }
-
-  async function mintNFT() {
-    if (!contract) {
-      statusEl.textContent = "Connect wallet first!";
-      return;
+        // Fetch gallery again to include the new NFT
+        fetchAllNFTs();
+      } catch (error) {
+        console.error(error);
+        statusEl.textContent = "Mint error: " + (error.message || error);
+      }
     }
 
-    statusEl.textContent = "Minting... please wait.";
-    try {
-      const tx = await contract.mint();
-      console.log("Transaction sent:", tx.hash);
+    /*************************************************************
+     *                FETCH ALL MINTED NFTs
+     *************************************************************/
+    async function fetchAllNFTs() {
+      if (!contract) {
+        statusEl.textContent = "Connect wallet to fetch NFTs.";
+        return;
+      }
+      statusEl.textContent = "Fetching all NFTs...";
 
-      statusEl.textContent = "Transaction sent. Waiting for confirmation...";
-      const receipt = await tx.wait();
-      console.log("Transaction confirmed:", receipt);
+      try {
+        // 1) Get total supply (number of minted tokens)
+        const supply = await contract.totalSupply();
+        const total = supply.toNumber();
 
-      statusEl.textContent = `Mint successful! Tx Hash: ${tx.hash}`;
-    } catch (err) {
-      console.error(err);
-      statusEl.textContent = `Error: ${err.message || err.toString()}`;
+        // 2) Clear existing gallery
+        galleryEl.innerHTML = "";
+
+        // 3) Loop over each token ID and fetch its tokenURI
+        for (let tokenId = 0; tokenId < total; tokenId++) {
+          const uri = await contract.tokenURI(tokenId);
+          // This is a data: URI with base64-encoded JSON. e.g., "data:application/json;base64,eyJ..."
+          // We need to decode the base64-encoded JSON to extract image, name, description, etc.
+
+          const metadata = decodeDataURI(uri);
+          // metadata.image should be "data:image/svg+xml;base64,..." or similar
+
+          // Create an element in the gallery
+          const card = document.createElement("div");
+          card.className = "nft-card";
+
+          // The image
+          const img = document.createElement("img");
+          img.src = metadata.image; // It's already a data URI
+          card.appendChild(img);
+
+          // A simple label
+          const label = document.createElement("p");
+          label.textContent = `Token #${tokenId} - ${metadata.name || ""}`;
+          card.appendChild(label);
+
+          galleryEl.appendChild(card);
+        }
+
+        statusEl.textContent = `Fetched ${total} NFT(s).`;
+      } catch (error) {
+        console.error(error);
+        statusEl.textContent = "Error fetching NFTs: " + (error.message || error);
+      }
     }
-  }
-</script>
+
+    /*************************************************************
+     *        HELPER: Decode Base64-Encoded JSON data URI
+     *************************************************************/
+    function decodeDataURI(dataURI) {
+      // Format: "data:application/json;base64,eyJ..."
+      const base64Part = dataURI.split(",")[1];
+      const jsonString = atob(base64Part);
+      return JSON.parse(jsonString);
+    }
+  </script>
 </body>
 </html>
