@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <title>Basic Colors NFT Viewer</title>
-  <!-- Ethers.js v5 from a CDN -->
+  <!-- IMPORTANT: Load Ethers.js first, so `ethers` is defined -->
   <script src="https://cdn.ethers.io/scripts/ethers-v5.min.js" type="application/javascript"></script>
+
   <style>
     body {
       font-family: sans-serif;
@@ -20,6 +21,7 @@
       border: 1px solid #ccc;
       padding: 0.5rem;
       text-align: center;
+      width: 220px;
     }
     .nft-card img {
       max-width: 200px;
@@ -32,26 +34,30 @@
 <body>
   <h1>Basic Colors NFT</h1>
 
+  <!-- Buttons -->
   <button id="connectBtn">Connect Wallet</button>
   <button id="mintBtn" disabled>Mint NFT</button>
   <button id="refreshBtn" disabled>Refresh Gallery</button>
+
+  <!-- Status messages -->
   <p id="status"></p>
 
-  <!-- Gallery container to show minted NFTs -->
+  <!-- Gallery container -->
   <div id="gallery"></div>
 
   <script>
     /*************************************************************
-     *                  CONTRACT CONFIGURATION
+     *            CONFIG: Contract Info & Minimal ABI
      *************************************************************/
-    const CONTRACT_ADDRESS = "0x5Fdda3D8Aa057B858a1F45642C29E93beed86742";
-    // Minimal ABI with mint, totalSupply, and tokenURI
-    const ABI = [
+    const CONTRACT_ADDRESS = "0x8956964E6CFf19Dc74F54871eBDbb64948169b37";
+    // Minimal ABI with the functions we need: mint(), totalSupply(), tokenURI()
+    const CONTRACT_ABI = [
       "function mint() external",
       "function totalSupply() public view returns (uint256)",
       "function tokenURI(uint256) public view returns (string memory)"
     ];
 
+    // Global variables
     let provider, signer, contract;
 
     // DOM elements
@@ -61,33 +67,33 @@
     const statusEl = document.getElementById("status");
     const galleryEl = document.getElementById("gallery");
 
-    // Wire up event listeners
+    // Event handlers
     connectBtn.onclick = connectWallet;
     mintBtn.onclick = mintNFT;
     refreshBtn.onclick = fetchAllNFTs;
 
     /*************************************************************
-     *                     CONNECT WALLET
+     *                 CONNECT TO METAMASK
      *************************************************************/
     async function connectWallet() {
       if (typeof window.ethereum === "undefined") {
-        statusEl.textContent = "MetaMask is not installed.";
+        statusEl.textContent = "MetaMask is not installed!";
         return;
       }
       try {
+        // Request account access
         await window.ethereum.request({ method: "eth_requestAccounts" });
+
         provider = new ethers.providers.Web3Provider(window.ethereum, "any");
         signer = provider.getSigner();
+        contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
-        // Instantiate contract
-        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-
-        // Enable the buttons now that we're connected
+        // Enable buttons after successful connection
         mintBtn.disabled = false;
         refreshBtn.disabled = false;
         statusEl.textContent = "Wallet connected!";
 
-        // Optionally auto-fetch on connect
+        // Optionally auto-refresh the gallery
         fetchAllNFTs();
       } catch (error) {
         statusEl.textContent = "Error connecting wallet: " + error.message;
@@ -99,81 +105,78 @@
      *************************************************************/
     async function mintNFT() {
       if (!contract) {
-        statusEl.textContent = "Please connect wallet first.";
+        statusEl.textContent = "Connect wallet first!";
         return;
       }
       try {
-        statusEl.textContent = "Minting... please confirm transaction in MetaMask.";
+        statusEl.textContent = "Minting... please confirm in MetaMask.";
         const tx = await contract.mint();
         statusEl.textContent = "Transaction submitted: " + tx.hash;
 
         await tx.wait();
-        statusEl.textContent = "Mint successful! Token minted. Tx: " + tx.hash;
+        statusEl.textContent = `Mint successful! New token minted. Tx: ${tx.hash}`;
 
-        // Fetch gallery again to include the new NFT
+        // Refresh gallery to show the newly minted NFT
         fetchAllNFTs();
       } catch (error) {
         console.error(error);
-        statusEl.textContent = "Mint error: " + (error.message || error);
+        statusEl.textContent = "Mint error: " + error.message;
       }
     }
 
     /*************************************************************
-     *                FETCH ALL MINTED NFTs
+     *                 FETCH ALL MINTED NFTs
      *************************************************************/
     async function fetchAllNFTs() {
       if (!contract) {
         statusEl.textContent = "Connect wallet to fetch NFTs.";
         return;
       }
-      statusEl.textContent = "Fetching all NFTs...";
+      statusEl.textContent = "Fetching NFTs...";
 
       try {
-        // 1) Get total supply (number of minted tokens)
-        const supply = await contract.totalSupply();
-        const total = supply.toNumber();
+        // 1) totalSupply() => number of minted tokens
+        const supplyBN = await contract.totalSupply();
+        const total = supplyBN.toNumber();
 
-        // 2) Clear existing gallery
+        // Clear the current gallery
         galleryEl.innerHTML = "";
 
-        // 3) Loop over each token ID and fetch its tokenURI
+        // 2) Loop over each token ID, fetch tokenURI, decode it, and display
         for (let tokenId = 0; tokenId < total; tokenId++) {
           const uri = await contract.tokenURI(tokenId);
-          // This is a data: URI with base64-encoded JSON. e.g., "data:application/json;base64,eyJ..."
-          // We need to decode the base64-encoded JSON to extract image, name, description, etc.
-
           const metadata = decodeDataURI(uri);
-          // metadata.image should be "data:image/svg+xml;base64,..." or similar
 
-          // Create an element in the gallery
+          // Build a card
           const card = document.createElement("div");
           card.className = "nft-card";
 
-          // The image
+          // Create an image element from the data URI
           const img = document.createElement("img");
-          img.src = metadata.image; // It's already a data URI
+          img.src = metadata.image; // data:image/svg+xml;base64,...
           card.appendChild(img);
 
-          // A simple label
+          // Add a label
           const label = document.createElement("p");
-          label.textContent = `Token #${tokenId} - ${metadata.name || ""}`;
+          label.textContent = `Token #${tokenId} - ${metadata.name || "No Name"}`;
           card.appendChild(label);
 
+          // Append card to gallery
           galleryEl.appendChild(card);
         }
 
         statusEl.textContent = `Fetched ${total} NFT(s).`;
       } catch (error) {
         console.error(error);
-        statusEl.textContent = "Error fetching NFTs: " + (error.message || error);
+        statusEl.textContent = "Error fetching NFTs: " + error.message;
       }
     }
 
     /*************************************************************
-     *        HELPER: Decode Base64-Encoded JSON data URI
+     *   HELPER: Decode the data:application/json;base64 URI
      *************************************************************/
     function decodeDataURI(dataURI) {
-      // Format: "data:application/json;base64,eyJ..."
+      // Typically "data:application/json;base64,<base64String>"
       const base64Part = dataURI.split(",")[1];
       const jsonString = atob(base64Part);
       return JSON.parse(jsonString);
