@@ -2,285 +2,202 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Color NFT Collection</title>
+  <title>BitTensor Testnet PLY + Mint Example</title>
+
+  <!-- Three.js -->
+  <script src="https://unpkg.com/three@latest/build/three.min.js"></script>
+  <!-- PLYLoader (from three/examples) -->
+  <script src="https://unpkg.com/three@latest/examples/js/loaders/PLYLoader.js"></script>
+  <!-- Ethers.js v5 -->
+  <script src="https://cdn.ethers.io/scripts/ethers-v5.min.js" type="application/javascript"></script>
+
   <style>
-    /* Global Reset & Body Style */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
     body {
-      background: #123; /* Dark background */
-      color: #eee;      /* Light text */
-      font-family: 'Courier New', Courier, monospace;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      min-height: 100vh;
-      padding: 2rem;
+      margin: 0;
+      overflow: hidden;
+      font-family: sans-serif;
     }
-
-    h1, h2, p {
-      margin-bottom: 1rem;
-      text-align: center;
-      letter-spacing: 1px;
+    #scene-container {
+      width: 100vw;
+      height: 80vh;
+      display: block;
     }
-
-    /* Glitch effect for the main heading */
-    .glitch {
-      position: relative;
-      font-size: 2.5rem;
-      text-transform: uppercase;
-      animation: glitch 2s infinite;
-      line-height: 1.2;
-    }
-
-    @keyframes glitch {
-      0% {
-        clip: rect(42px, 9999px, 44px, 0);
-        transform: skew(0.3deg);
-      }
-      5% {
-        clip: rect(10px, 9999px, 85px, 0);
-        transform: skew(0.8deg);
-      }
-      10% {
-        clip: rect(96px, 9999px, 76px, 0);
-        transform: skew(0.2deg);
-      }
-      15% {
-        clip: rect(40px, 9999px, 10px, 0);
-        transform: skew(0.7deg);
-      }
-      20% {
-        clip: rect(20px, 9999px, 90px, 0);
-        transform: skew(0.5deg);
-      }
-      25% {
-        clip: rect(80px, 9999px, 44px, 0);
-        transform: skew(0.4deg);
-      }
-      30% {
-        clip: rect(16px, 9999px, 60px, 0);
-        transform: skew(0.8deg);
-      }
-      35% {
-        clip: rect(8px, 9999px, 80px, 0);
-        transform: skew(0.3deg);
-      }
-      40% {
-        clip: rect(84px, 9999px, 36px, 0);
-        transform: skew(0.7deg);
-      }
-      45% {
-        clip: rect(58px, 9999px, 38px, 0);
-        transform: skew(0.8deg);
-      }
-      50% {
-        clip: rect(16px, 9999px, 28px, 0);
-        transform: skew(0.4deg);
-      }
-      55% {
-        clip: rect(0px, 9999px, 80px, 0);
-        transform: skew(0.9deg);
-      }
-      60% {
-        clip: rect(44px, 9999px, 90px, 0);
-        transform: skew(0.1deg);
-      }
-      65% {
-        clip: rect(72px, 9999px, 50px, 0);
-        transform: skew(0.3deg);
-      }
-      70% {
-        clip: rect(8px, 9999px, 20px, 0);
-        transform: skew(0.6deg);
-      }
-      75% {
-        clip: rect(0px, 9999px, 80px, 0);
-        transform: skew(0.9deg);
-      }
-      80% {
-        clip: rect(40px, 9999px, 50px, 0);
-        transform: skew(0.3deg);
-      }
-      85% {
-        clip: rect(64px, 9999px, 80px, 0);
-        transform: skew(0.7deg);
-      }
-      90% {
-        clip: rect(14px, 9999px, 90px, 0);
-        transform: skew(0.5deg);
-      }
-      95% {
-        clip: rect(64px, 9999px, 100px, 0);
-        transform: skew(0.6deg);
-      }
-      100% {
-        clip: rect(42px, 9999px, 44px, 0);
-        transform: skew(0.3deg);
-      }
-    }
-
-    /* Button styling */
-    #mintButton {
-      background: #222;
-      color: #eee;
-      border: 1px solid #555;
-      padding: 0.8rem 1.2rem;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background 0.3s ease, color 0.3s ease;
-      margin-bottom: 1rem;
-    }
-    #mintButton:hover {
-      background: #555;
-      color: #fff;
-    }
-
-    /* Status message styling */
-    #status {
-      margin-bottom: 2rem;
-      font-style: italic;
-      text-align: center;
-    }
-
-    /* Collection display */
-    #collection {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 1rem;
-      width: 100%;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .nft {
-      border: 1px solid #555;
-      background: #111;
+    #controls {
+      margin: 0;
       padding: 1rem;
-      text-align: center;
-      transition: transform 0.3s ease;
+      background-color: #f4f4f4;
     }
-    .nft:hover {
-      transform: scale(1.02);
-    }
-    .nft img {
-      width: 200px;
-      height: 200px;
-      object-fit: cover;
-      border: 1px solid #444;
-      margin-bottom: 0.5rem;
-    }
-    .nft p {
-      margin: 0.5rem 0;
-      line-height: 1.4;
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      margin-right: 1rem;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h1 class="glitch">Color NFT Collection</h1>
+  <!-- The 3D scene container -->
+  <div id="scene-container"></div>
 
-  <button id="mintButton">Mint NFT</button>
-  <div id="status"></div>
+  <!-- Controls / Buttons -->
+  <div id="controls">
+    <button id="connectButton">Connect Wallet</button>
+    <button id="mintButton" disabled>Mint NFT</button>
+    <span id="status"></span>
+  </div>
 
-  <h2>Minted NFTs:</h2>
-  <div id="collection"></div>
+<script>
+  /*************************************************************
+   *               THREE.JS + PLY LOADING SECTION
+   *************************************************************/
 
-  <!-- Include ethers.js -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script>
-    // Your contract details
-    const contractAddress = "0xaaA5AB7f79Ac204cF1cCF0683B282FDfB65C443D";
-    const contractABI = [
-      "function mint() public",
-      "function tokenCounter() public view returns (uint256)",
-      "function tokenURI(uint256 tokenId) public view returns (string)"
-    ];
+  // IPFS-hosted PLY file
+  // (Replace with your own IPFS Gateway URL if different)
+  const plyUrl = "https://orange-adverse-wolf-158.mypinata.cloud/ipfs/bafybeiedyzmedvrq27qwqcacyby2vsklqfx3nfnfm4kug4tauvpjimxj6a";
 
-    // comment
+  let container, camera, scene, renderer;
 
-    // 1) Create a read-only provider using the provided RPC URL:
-    const readOnlyProvider = new ethers.providers.JsonRpcProvider(
-      "test.chain.opentensor.ai"
+  init3D();
+  animate();
+
+  function init3D() {
+    container = document.getElementById('scene-container');
+
+    // Create a PerspectiveCamera
+    camera = new THREE.PerspectiveCamera(
+      45,
+      container.clientWidth / container.clientHeight,
+      0.1,
+      1000
     );
+    camera.position.set(0, 0, 2);
 
-    // 2) Create a read-only contract instance for loading NFTs
-    const readOnlyContract = new ethers.Contract(contractAddress, contractABI, readOnlyProvider);
+    // Create the scene
+    scene = new THREE.Scene();
 
-    // We'll store a signer-based contract here once the user connects
-    let signerContract = null;
+    // Basic directional light
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(2, 2, 5).normalize();
+    scene.add(light);
 
-    // Load NFTs from the contract using the read-only provider
-    async function loadCollection() {
-      try {
-        const tokenCount = await readOnlyContract.tokenCounter();
-        const collectionDiv = document.getElementById("collection");
-        collectionDiv.innerHTML = "";
+    // Renderer
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
 
-        for (let i = 0; i < tokenCount; i++) {
-          try {
-            const tokenURI = await readOnlyContract.tokenURI(i);
-            // The tokenURI is typically data:application/json;base64,<encoded-json>
-            const base64JSON = tokenURI.split("base64,")[1];
-            const jsonMetadata = JSON.parse(atob(base64JSON));
-            const imgSrc = jsonMetadata.image;
+    // Load PLY
+    const loader = new THREE.PLYLoader();
+    loader.load(
+      plyUrl,
+      function (geometry) {
+        geometry.computeVertexNormals(); // for shading
 
-            const nftDiv = document.createElement("div");
-            nftDiv.className = "nft";
-            nftDiv.innerHTML = `
-              <img src="${imgSrc}" alt="NFT Image">
-              <p><strong>${jsonMetadata.name}</strong></p>
-              <p>${jsonMetadata.description}</p>
-            `;
-            collectionDiv.appendChild(nftDiv);
-          } catch (err) {
-            console.error("Error loading token", i, err);
-          }
-        }
-      } catch (error) {
-        console.error("Error loading NFTs:", error);
+        const material = new THREE.MeshStandardMaterial({
+          color: 0x0055ff,
+          flatShading: false,
+        });
+
+        const mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+      },
+      (xhr) => {
+        console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
+      },
+      (error) => {
+        console.error('Error loading PLY:', error);
       }
+    );
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+  }
+
+  // Handle window resize
+  window.addEventListener('resize', onWindowResize);
+  function onWindowResize() {
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+  }
+
+  /*************************************************************
+   *                  WEB3 / ETHERS SECTION
+   *************************************************************/
+  
+  // The address of your deployed BasicColorsNFT on BitTensor testnet
+  const CONTRACT_ADDRESS = "0x5Fdda3D8Aa057B858a1F45642C29E93beed86742";
+  // Minimal ABI with the mint() function
+  const CONTRACT_ABI = [
+    "function mint() external"
+  ];
+
+  // DOM elements
+  const connectButton = document.getElementById("connectButton");
+  const mintButton = document.getElementById("mintButton");
+  const statusEl = document.getElementById("status");
+
+  let provider;
+  let signer;
+  let contract;
+
+  connectButton.addEventListener("click", connectWallet);
+  mintButton.addEventListener("click", mintNFT);
+
+  async function connectWallet() {
+    if (typeof window.ethereum === "undefined") {
+      statusEl.textContent = "MetaMask is not installed!";
+      return;
     }
 
-    // Prompt the user to connect their wallet (MetaMask)
-    async function connectWallet() {
-      if (window.ethereum) {
-        await window.ethereum.request({ method: "eth_requestAccounts" });
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
-        signerContract = new ethers.Contract(contractAddress, contractABI, signer);
-      } else {
-        alert("Please install MetaMask!");
-      }
+    try {
+      // Request account access
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+
+      // Create an Ethers provider and signer from MetaMask
+      provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+      signer = provider.getSigner();
+
+      // (Optional) Check if the user is on the correct chain
+      // For BitTensor testnet, you'd confirm chainId, but some custom chains
+      // might show up as '0xNaN' or need manual addition in MetaMask
+      const network = await provider.getNetwork();
+      console.log("Connected to chainId:", network.chainId);
+
+      statusEl.textContent = "Wallet connected!";
+      mintButton.disabled = false; // enable mint button once connected
+
+      // Instantiate contract
+      contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = "User denied account access or error occurred";
+    }
+  }
+
+  async function mintNFT() {
+    if (!contract) {
+      statusEl.textContent = "Connect wallet first!";
+      return;
     }
 
-    // Mint an NFT using the signer-based contract
-    async function mintNFT() {
-      try {
-        // If we haven't connected yet, do so now
-        if (!signerContract) {
-          await connectWallet();
-        }
-        document.getElementById("status").innerText = "Minting in progress...";
-        const tx = await signerContract.mint();
-        await tx.wait();
-        document.getElementById("status").innerText = "Mint successful!";
-        // Reload the NFT collection to include the new mint
-        loadCollection();
-      } catch (error) {
-        document.getElementById("status").innerText = "Minting failed!";
-        console.error(error);
-      }
+    statusEl.textContent = "Minting... please wait.";
+    try {
+      const tx = await contract.mint();
+      console.log("Transaction sent:", tx.hash);
+
+      statusEl.textContent = "Transaction sent. Waiting for confirmation...";
+      const receipt = await tx.wait();
+      console.log("Transaction confirmed:", receipt);
+
+      statusEl.textContent = `Mint successful! Tx Hash: ${tx.hash}`;
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = `Error: ${err.message || err.toString()}`;
     }
-
-    // Add event listener to the "Mint NFT" button
-    document.getElementById("mintButton").addEventListener("click", mintNFT);
-
-    // On page load, load the existing NFTs using the read-only provider
-    window.addEventListener("load", loadCollection);
-  </script>
+  }
+</script>
 </body>
 </html>
